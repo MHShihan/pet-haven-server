@@ -11,7 +11,12 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 // Parser
-app.use(cors());
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "http://localhost:5174"],
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 
@@ -40,7 +45,7 @@ const verifyToken = async (req, res, next) => {
   }
   jwt.verify(token, accessTokenSecret, (err, decoded) => {
     if (err) {
-      return res.status(401).send({ message: "Unauthorizeddddd" });
+      return res.status(401).send({ message: "Unauthorized" });
     }
     req.user = decoded;
     next();
@@ -62,7 +67,7 @@ async function run() {
           .cookie("token", token, {
             httpOnly: true,
             secure: false,
-            sameSite: "none",
+            // sameSite: "none",
           })
           .send({ success: true });
       } catch (err) {
@@ -70,9 +75,15 @@ async function run() {
       }
     });
 
+    app.post("/api/v1/logout", async (req, res) => {
+      const loggedOutUser = req.body;
+      console.log(loggedOutUser);
+      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    });
+
     // Get Method
     // Popular Services
-    app.get("/api/v1/popularServices", verifyToken, async (req, res) => {
+    app.get("/api/v1/popularServices", async (req, res) => {
       try {
         const result = await serviceCollection.find().limit(4).toArray();
         res.send(result);
@@ -81,18 +92,48 @@ async function run() {
       }
     });
 
+    // All services and filtering services
+    app.get("/api/v1/services", async (req, res) => {
+      try {
+        let query = {};
+        let sortObj = {};
+
+        const serviceName = req.query.serviceName;
+        const sortField = req.query.sortField;
+        const sortOrder = req.query.sortOrder;
+
+        if (serviceName) {
+          query = { serviceName };
+        }
+        if (sortField && sortOrder) {
+          sortObj[sortField] = sortOrder;
+        }
+        console.log(sortObj);
+
+        const result = await serviceCollection
+          .find(query)
+          .sort(sortObj)
+          .toArray();
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
     // Bookings
     app.get("/api/v1/user/bookings", verifyToken, async (req, res) => {
       const queryEmail = req.query?.email;
       const tokenEmail = req.user.email;
 
+      let query = {};
+
       if (queryEmail !== tokenEmail) {
         return res.status(403).send("Forbidden");
       }
-
-      const result = await bookingCollection
-        .find({ email: queryEmail })
-        .toArray();
+      if (queryEmail) {
+        query = { email: queryEmail };
+      }
+      const result = await postCollection.find(query).toArray();
       res.send(result);
     });
 
