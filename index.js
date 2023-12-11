@@ -62,7 +62,7 @@ async function run() {
       try {
         // creating token and send to client
         const user = req.body;
-        const token = jwt.sign(user, accessTokenSecret, { expiresIn: "1h" });
+        const token = jwt.sign(user, accessTokenSecret, { expiresIn: "24h" });
         res
           .cookie("token", token, {
             httpOnly: true,
@@ -101,13 +101,9 @@ async function run() {
         const serviceName = req.query.serviceName;
         const sortField = req.query.sortField;
         const sortOrder = req.query.sortOrder;
-        const providerEmail = req.query.email;
-        // console.log(providerEmail);
 
         if (serviceName) {
           query.serviceName = serviceName;
-        } else {
-          query.providerEmail = providerEmail;
         }
         if (sortField && sortOrder) {
           sortObj[sortField] = sortOrder;
@@ -119,6 +115,23 @@ async function run() {
           .sort(sortObj)
           .toArray();
         res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    // Get Services according to email
+    app.get("/api/v1/user/services", verifyToken, async (req, res) => {
+      try {
+        const email = req.query?.email;
+        const query = { providerEmail: email };
+        // console.log(query);
+        if (email) {
+          const result = await serviceCollection.find(query).toArray();
+          res.send(result);
+        } else {
+          res.send([]);
+        }
       } catch (err) {
         console.log(err);
       }
@@ -169,6 +182,25 @@ async function run() {
       const booking = req.body;
       // console.log(booking);
       const result = await bookingCollection.insertOne(booking);
+      res.send(result);
+    });
+
+    // Update Data
+    app.put("/api/v1/user/service/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const updatedService = req.body;
+      const query = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedData = {
+        $set: {
+          ...updatedService,
+        },
+      };
+      const result = await serviceCollection.updateOne(
+        query,
+        updatedData,
+        options
+      );
       res.send(result);
     });
 
