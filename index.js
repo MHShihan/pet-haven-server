@@ -161,7 +161,7 @@ async function run() {
         return res.status(403).send("Forbidden");
       }
       if (queryEmail) {
-        query = { email: queryEmail };
+        query = { customerEmail: queryEmail };
       }
       const result = await bookingCollection.find(query).toArray();
       res.send(result);
@@ -187,30 +187,57 @@ async function run() {
 
     // Update Data
     app.put("/api/v1/user/service/:id", verifyToken, async (req, res) => {
-      const id = req.params.id;
-      const updatedService = req.body;
-      const query = { _id: new ObjectId(id) };
-      const options = { upsert: true };
-      const updatedData = {
-        $set: {
-          ...updatedService,
-        },
-      };
-      const result = await serviceCollection.updateOne(
-        query,
-        updatedData,
-        options
-      );
-      res.send(result);
+      try {
+        const id = req.params.id;
+        const updatedService = req.body;
+        const query = { _id: new ObjectId(id) };
+        const options = { upsert: true };
+        const updatedData = {
+          $set: {
+            ...updatedService,
+          },
+        };
+        const result = await serviceCollection.updateOne(
+          query,
+          updatedData,
+          options
+        );
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
     });
 
     // Delete Method
-    app.delete("/api/v1/user/cancel-booking/:bookingId", async (req, res) => {
-      const id = req.params.bookingId;
-      const query = { _id: new ObjectId(id) };
-      const result = await postCollection.deleteOne(query);
-      res.send(result);
-    });
+    app.delete(
+      "/api/v1/user/service/:serviceId",
+      verifyToken,
+      async (req, res) => {
+        try {
+          const id = req.params.serviceId;
+          const query = { _id: new ObjectId(id) };
+          const result = await serviceCollection.deleteOne(query);
+          res.send(result);
+        } catch (err) {
+          console.log(err);
+        }
+      }
+    );
+
+    app.delete(
+      "/api/v1/user/cancel-booking/:bookingId",
+      verifyToken,
+      async (req, res) => {
+        try {
+          const id = req.params.bookingId;
+          const query = { _id: new ObjectId(id) };
+          const result = await bookingCollection.deleteOne(query);
+          res.send(result);
+        } catch (err) {
+          console.log(err);
+        }
+      }
+    );
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
