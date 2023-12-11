@@ -35,7 +35,7 @@ const serviceCollection = client
   .db("petHavenDB")
   .collection("petHavenServices");
 const postCollection = client.db("petHavenDB").collection("createdServices");
-const bookingCollection = client.db("petHaven").collection("bookings");
+const bookingCollection = client.db("petHavenDB").collection("bookings");
 
 // Middlewares
 const verifyToken = async (req, res, next) => {
@@ -101,19 +101,36 @@ async function run() {
         const serviceName = req.query.serviceName;
         const sortField = req.query.sortField;
         const sortOrder = req.query.sortOrder;
+        const providerEmail = req.query.email;
+        // console.log(providerEmail);
 
         if (serviceName) {
-          query = { serviceName };
+          query.serviceName = serviceName;
+        } else {
+          query.providerEmail = providerEmail;
         }
         if (sortField && sortOrder) {
           sortObj[sortField] = sortOrder;
         }
-        console.log(sortObj);
+        // console.log(sortObj);
 
         const result = await serviceCollection
           .find(query)
           .sort(sortObj)
           .toArray();
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    // Get Single Service
+    app.get("/api/v1/services/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        console.log(id);
+        const query = { _id: new ObjectId(id) };
+        const result = await serviceCollection.findOne(query);
         res.send(result);
       } catch (err) {
         console.log(err);
@@ -133,7 +150,7 @@ async function run() {
       if (queryEmail) {
         query = { email: queryEmail };
       }
-      const result = await postCollection.find(query).toArray();
+      const result = await bookingCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -141,7 +158,7 @@ async function run() {
     app.post("/api/v1/user/create-service", async (req, res) => {
       try {
         const services = req.body;
-        const result = await postCollection.insertOne(services);
+        const result = await serviceCollection.insertOne(services);
         res.send(result);
       } catch (err) {
         console.log(err);
