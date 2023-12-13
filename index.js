@@ -13,7 +13,10 @@ const port = process.env.PORT || 5000;
 // Parser
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"],
+    origin: [
+      "https://pet-haven-client.web.app",
+      "https://pet-haven-client.firebaseapp.com",
+    ],
     credentials: true,
   })
 );
@@ -54,9 +57,6 @@ const verifyToken = async (req, res, next) => {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
-
     // Auth related API
     app.post("/api/v1/auth/access-token", async (req, res) => {
       try {
@@ -103,7 +103,10 @@ async function run() {
         const sortOrder = req.query.sortOrder;
 
         if (serviceName) {
-          query.serviceName = serviceName;
+          // query.serviceName = serviceName;
+          query = {
+            serviceName: { $regex: serviceName, $options: "i" },
+          };
         }
         if (sortField && sortOrder) {
           sortObj[sortField] = sortOrder;
@@ -121,7 +124,7 @@ async function run() {
     });
 
     // Get Services according to email
-    app.get("/api/v1/user/services", verifyToken, async (req, res) => {
+    app.get("/api/v1/user/services", async (req, res) => {
       try {
         const email = req.query?.email;
         const query = { providerEmail: email };
@@ -151,15 +154,15 @@ async function run() {
     });
 
     // Bookings
-    app.get("/api/v1/user/bookings", verifyToken, async (req, res) => {
+    app.get("/api/v1/user/bookings", async (req, res) => {
       const queryEmail = req.query?.email;
-      const tokenEmail = req.user.email;
+      // const tokenEmail = req.user.email;
 
       let query = {};
 
-      if (queryEmail !== tokenEmail) {
-        return res.status(403).send("Forbidden");
-      }
+      // if (queryEmail !== tokenEmail) {
+      //   return res.status(403).send("Forbidden");
+      // }
       if (queryEmail) {
         query = { customerEmail: queryEmail };
       }
@@ -186,7 +189,7 @@ async function run() {
     });
 
     // Update Data
-    app.put("/api/v1/user/service/:id", verifyToken, async (req, res) => {
+    app.put("/api/v1/user/service/:id", async (req, res) => {
       try {
         const id = req.params.id;
         const updatedService = req.body;
@@ -209,44 +212,28 @@ async function run() {
     });
 
     // Delete Method
-    app.delete(
-      "/api/v1/user/service/:serviceId",
-      verifyToken,
-      async (req, res) => {
-        try {
-          const id = req.params.serviceId;
-          const query = { _id: new ObjectId(id) };
-          const result = await serviceCollection.deleteOne(query);
-          res.send(result);
-        } catch (err) {
-          console.log(err);
-        }
+    app.delete("/api/v1/user/service/:serviceId", async (req, res) => {
+      try {
+        const id = req.params.serviceId;
+        const query = { _id: new ObjectId(id) };
+        const result = await serviceCollection.deleteOne(query);
+        res.send(result);
+      } catch (err) {
+        console.log(err);
       }
-    );
+    });
 
-    app.delete(
-      "/api/v1/user/cancel-booking/:bookingId",
-      verifyToken,
-      async (req, res) => {
-        try {
-          const id = req.params.bookingId;
-          const query = { _id: new ObjectId(id) };
-          const result = await bookingCollection.deleteOne(query);
-          res.send(result);
-        } catch (err) {
-          console.log(err);
-        }
+    app.delete("/api/v1/user/cancel-booking/:bookingId", async (req, res) => {
+      try {
+        const id = req.params.bookingId;
+        const query = { _id: new ObjectId(id) };
+        const result = await bookingCollection.deleteOne(query);
+        res.send(result);
+      } catch (err) {
+        console.log(err);
       }
-    );
-
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    });
   } finally {
-    // Ensures that the client will close when you finish/error
-    // await client.close();
   }
 }
 run().catch(console.dir);
